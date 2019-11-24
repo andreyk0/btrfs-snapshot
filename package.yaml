@@ -20,8 +20,9 @@ extra-source-files:
 description:         Please see the README on Github at <https://github.com/githubuser/btrfs-snapshot#readme>
 
 dependencies:
-- base >= 4.11 && < 10
-- rio >= 0.1.8.0
+- base
+- rio
+- turtle
 
 ghc-options:
 - -Wall
