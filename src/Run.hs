@@ -5,9 +5,10 @@ module Run (run) where
 
 import           Import
 import           Types
+import Btrfs
 
 run
-  :: HasCLIOptions env
+  :: HasCLI env
   => HasLogFunc env
   => RIO env ()
 run = do
@@ -18,17 +19,19 @@ run = do
 
 
 runCLISnapshotCreate
-  :: HasCLIOptions env
-  => HasLogFunc env
+  :: HasCLI env
   => CLISnapshotCreate
   -> RIO env ()
-runCLISnapshotCreate (SnapshotCreate paths) = do
-  logInfo . display $ tshow paths
+runCLISnapshotCreate (SnapshotCreate paths) =
+  traverse_ snapPath paths
+  where
+    snapPath fp = do
+      findBtrfsSubvol fp
+      logInfo . display $ tshow fp
 
 
 runCLISnapshotTransfer
-  :: HasCLIOptions env
-  => HasLogFunc env
+  :: HasCLI env
   => CLISnapshotTransfer
   -> RIO env ()
 runCLISnapshotTransfer (SnapshotTransfer tPathFrom tPathTo) = do

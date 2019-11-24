@@ -51,19 +51,24 @@ data App = App
 makeLenses ''App
 
 
-class HasCLIOptions a where
-  cliIsVerbose :: Lens' a Bool
-  cliCommand :: Lens' a CLICommand
-
-
-instance HasCLIOptions App where
-  cliIsVerbose = appOptions . optionsVerbose
-  cliCommand = appCommand
-
-
 instance HasLogFunc App where
   logFuncL = appLogFunc
 
 
 instance HasProcessContext App where
   processContextL = appProcessContext
+
+
+class ( HasLogFunc a
+      , HasProcessContext a
+      ) => HasCLI a where
+
+  cliIsVerbose :: Lens' a Bool
+  cliCommand :: Lens' a CLICommand
+
+
+instance HasCLI App where
+  cliIsVerbose = appOptions . optionsVerbose
+  cliCommand = appCommand
+
+

@@ -24,7 +24,6 @@ dependencies:
 - microlens
 - microlens-platform
 - rio
-- turtle
 
 ghc-options:
 - -Wall
