@@ -21,6 +21,8 @@ description:         Please see the README on Github at <https://github.com/gith
 
 dependencies:
 - base
+- microlens
+- microlens-platform
 - rio
 - turtle
 
@@ -43,19 +45,6 @@ executables:
     dependencies:
     - btrfs-snapshot
     - optparse-simple
-
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-
-tests:
-  btrfs-snapshot-test:
-    main:                Spec.hs
-    source-dirs:         test
-    dependencies:
-    - btrfs-snapshot
-    - hspec
 
     ghc-options:
     - -threaded
