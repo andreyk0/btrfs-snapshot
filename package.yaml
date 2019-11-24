@@ -25,6 +25,7 @@ dependencies:
 - microlens
 - microlens-platform
 - rio
+- time
 - typed-process
 - unix
 

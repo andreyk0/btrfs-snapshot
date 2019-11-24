@@ -1,17 +1,26 @@
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 
 module Btrfs
-  ( findBtrfsSubvol
+  ( btrfsSubvolSnapshot
+  , findBtrfsSubvol
   ) where
 
+
+import           Data.Time
 import           Import
+import           RIO.Directory
 import           RIO.FilePath
 import           RIO.Process
-import           System.Directory
+import qualified RIO.Text             as T
 import           System.Process.Typed (nullStream)
 import           Types
+
+
+newtype BtrfsException = BtrfsException Text deriving (Eq,Show,Generic)
+instance Exception BtrfsException
 
 
 {- | Walk the path up until we hit subvolume boundary.
@@ -20,19 +29,62 @@ import           Types
 findBtrfsSubvol
   :: HasCLI env
   => FilePath
-  -> RIO env (Either Text FilePath)
+  -> RIO env FilePath
 findBtrfsSubvol fPath' = do
-  fPath <- liftIO $ canonicalizePath fPath'
+  fPath <- canonicalizePath fPath'
+  isSv <- isBtrfsSubvol fPath
 
-  e <- proc "btrfs" ["subvol", "show", fPath]
+  if isSv
+    then pure fPath
+    else case (fPath, takeDirectory fPath)
+           of ("/", _)     -> throwM $ BtrfsException "Failed to find btrfs subvol in /"
+              (".", _)     -> throwM $ BtrfsException "Failed to get canonical path"
+              (_, fParent) -> findBtrfsSubvol fParent
+
+
+btrfsSubvolSnapshot
+  :: HasCLI env
+  => FilePath
+  -> RIO env ()
+btrfsSubvolSnapshot fPathFrom = do
+  sRoot <- btrfsSnapshotRoot
+  ts <- liftIO $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%S")) <$> getCurrentTime
+  let fPathToRoot = sRoot <> fPathFrom
+      fPathTo = fPathToRoot <> "/" <> ts
+
+  createDirectoryIfMissing True fPathToRoot
+  proc "btrfs" ["subvolume", "snapshot", "-r", fPathFrom, fPathTo] runProcess_
+
+
+btrfsSnapshotRoot
+  :: HasCLI env
+  => RIO env FilePath
+btrfsSnapshotRoot = do
+  ex <- doesDirectoryExist btrfsSnapshotRootName
+  isSnapRoot <- isBtrfsSubvol btrfsSnapshotRootName
+  case (ex, isSnapRoot)
+    of (True, True)  -> pure btrfsSnapshotRootName
+       (True, False) -> throwM $ BtrfsException $ "Refusing to run, " <>
+                                 T.pack btrfsSnapshotRootName <> " exists but it's not a btrfs subvolume"
+       (False, True) -> throwM $ BtrfsException "btrfsSnapshotRoot: unexpected error"
+       (False, False) -> proc "btrfs" ["subvolume", "create", btrfsSnapshotRootName] runProcess_ >> pure btrfsSnapshotRootName
+
+
+btrfsSnapshotRootName :: FilePath
+btrfsSnapshotRootName = "/.snapshotXXX"
+
+
+-- | Checks if a given path is a btrfs subvolume
+isBtrfsSubvol
+  :: HasCLI env
+  => FilePath
+  -> RIO env Bool
+isBtrfsSubvol fPath = do
+  e <- proc "btrfs" ["subvolume", "show", fPath]
        ( runProcess
        . setStdout nullStream
        . setStderr nullStream
        )
-  case e
-    of ExitSuccess   -> pure $ Right fPath
-       ExitFailure _ ->
-         case (fPath, takeDirectory fPath)
-           of ("/", _)     -> pure $ Left "Failed to find btrfs subvol"
-              (".", _)     -> pure $ Left "Failed to get canonical path"
-              (_, fParent) -> findBtrfsSubvol fParent
+  pure $ case e
+           of ExitSuccess   -> True
+              ExitFailure _ -> False
