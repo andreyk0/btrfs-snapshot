@@ -1,8 +1,9 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+
 module Import
   ( module RIO
-  , module Types
+  , module Lens.Micro.Platform
   ) where
 
-import RIO
-import Types
+import RIO hiding (view)
+import Lens.Micro.Platform

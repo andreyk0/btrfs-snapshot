@@ -3,6 +3,7 @@
 module Run (run) where
 
 import Import
+import Types
 
 run :: RIO App ()
 run = do
