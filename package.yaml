@@ -21,9 +21,12 @@ description:         Please see the README on Github at <https://github.com/gith
 
 dependencies:
 - base
+- directory
 - microlens
 - microlens-platform
 - rio
+- typed-process
+- unix
 
 ghc-options:
 - -Wall

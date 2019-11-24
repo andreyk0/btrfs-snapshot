@@ -6,12 +6,19 @@ module Run (run) where
 import           Import
 import           Types
 import Btrfs
+import System.Posix.User
 
 run
   :: HasCLI env
   => HasLogFunc env
   => RIO env ()
 run = do
+  euid <- liftIO $ getEffectiveUserID
+
+  unless (0 == euid) $ do
+    logError $ "Please re-run with 'sudo'"
+    exitFailure
+
   cmd <- view cliCommand
   case cmd
     of CLISnapshotCreate c -> runCLISnapshotCreate c
@@ -26,8 +33,8 @@ runCLISnapshotCreate (SnapshotCreate paths) =
   traverse_ snapPath paths
   where
     snapPath fp = do
-      findBtrfsSubvol fp
-      logInfo . display $ tshow fp
+      res <- findBtrfsSubvol fp
+      logInfo . display $ tshow res
 
 
 runCLISnapshotTransfer
