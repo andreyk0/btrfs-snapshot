@@ -6,16 +6,19 @@
 module Btrfs
   ( btrfsSubvolSnapshot
   , findBtrfsSubvol
+  , findBtrfsSubvolSnapshots
   ) where
 
 
+import qualified Data.Text.Lazy          as LT
+import qualified Data.Text.Lazy.Encoding as LTE
 import           Data.Time
 import           Import
 import           RIO.Directory
 import           RIO.FilePath
 import           RIO.Process
-import qualified RIO.Text             as T
-import           System.Process.Typed (nullStream)
+import qualified RIO.Text                as T
+import           System.Process.Typed    (nullStream)
 import           Types
 
 
@@ -40,6 +43,26 @@ findBtrfsSubvol fPath' = do
            of ("/", _)     -> throwM $ BtrfsException "Failed to find btrfs subvol in /"
               (".", _)     -> throwM $ BtrfsException "Failed to get canonical path"
               (_, fParent) -> findBtrfsSubvol fParent
+
+
+-- | Find btrfs subvolume snapshots matching prefix.
+findBtrfsSubvolSnapshots
+  :: HasCLI env
+  => FilePath
+  -> RIO env [FilePath]
+findBtrfsSubvolSnapshots fp' = do
+  fp <- canonicalizePath fp'
+  fpVol <- findBtrfsSubvol fp >>= canonicalizePath
+  outBytes <- proc "btrfs" ["subvolume", "list", fpVol] readProcessStdout_
+  let outTxt = LTE.decodeUtf8 outBytes
+      snapPaths = catMaybes $ parseLine <$> LT.lines outTxt
+
+  pure $ LT.unpack <$> filter (LT.isPrefixOf (LT.pack fp)) snapPaths
+
+  where
+    parseLine l =
+      let fields = LT.split (== ' ') l
+       in ("/" <>) <$> listToMaybe (drop 8 fields)
 
 
 btrfsSubvolSnapshot

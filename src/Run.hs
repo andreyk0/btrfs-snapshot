@@ -41,4 +41,5 @@ runCLISnapshotTransfer
   => CLISnapshotTransfer
   -> RIO env ()
 runCLISnapshotTransfer (SnapshotTransfer tPathFrom tPathTo) = do
-  logInfo . display $ tshow (tPathFrom, tPathTo)
+  snaps <- findBtrfsSubvolSnapshots tPathFrom
+  logInfo . display $ tshow (tPathFrom, tPathTo, snaps)
