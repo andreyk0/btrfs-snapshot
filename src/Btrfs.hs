@@ -121,7 +121,7 @@ btrfsSnapshotRoot = do
 
 
 btrfsSnapshotRootName :: FilePath
-btrfsSnapshotRootName = "/.snapshotXXX"
+btrfsSnapshotRootName = "/.snapshot"
 
 
 -- | Checks if a given path is a btrfs subvolume
