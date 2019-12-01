@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -53,10 +54,20 @@ runCLISnapshotTransfer (SnapshotTransfer tPathFrom tPathTo) = do
         | s <- snaps
         ]
 
-  let toTransfer = List.sort
+  let transferFromTo = List.sort
         [ (s, addTrailingPathSeparator tPathTo <> p)
         | (s, p) <- snapSources
         ]
+
+      previousSnapshots = Nothing : (Just . fst <$> transferFromTo)
+
+      incrementalTransfers = zip previousSnapshots transferFromTo <&>
+        (\case (Nothing, (f,t)) -> (Nothing, f, t)
+               (Just prev, (f, t)) ->
+                 if takeDirectory prev == takeDirectory f
+                 then (Just prev, f, t)
+                 else (Nothing, f, t)
+        )
 
   --  List.sort
   -- Map parent [paths]
@@ -69,4 +80,6 @@ runCLISnapshotTransfer (SnapshotTransfer tPathFrom tPathTo) = do
   mts <- btrfsMounts
   logInfo . display $ tshow mts
   logInfo . display $ tshow (tPathFrom, tPathTo, snaps)
-  logInfo . display $ tshow toTransfer
+
+  forM_ incrementalTransfers $ \x@(prev, f, t) ->
+    logInfo . display $ tshow x
