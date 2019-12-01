@@ -42,4 +42,14 @@ runCLISnapshotTransfer
   -> RIO env ()
 runCLISnapshotTransfer (SnapshotTransfer tPathFrom tPathTo) = do
   snaps <- findBtrfsSubvolSnapshots tPathFrom
+
+  -- Map parent [paths]
+
+  -- fold (starting with first)
+  --   if exists skip
+  --   else if no previous - send over
+  --   else when has previous - send incremental
+
+  mts <- btrfsMounts
+  logInfo . display $ tshow mts
   logInfo . display $ tshow (tPathFrom, tPathTo, snaps)

@@ -1,15 +1,18 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns      #-}
 
 
 module Btrfs
-  ( btrfsSubvolSnapshot
+  ( btrfsMounts
+  , btrfsSubvolSnapshot
   , findBtrfsSubvol
   , findBtrfsSubvolSnapshots
   ) where
 
 
+import qualified Data.Text.IO            as TIO
 import qualified Data.Text.Lazy          as LT
 import qualified Data.Text.Lazy.Encoding as LTE
 import           Data.Time
@@ -111,3 +114,15 @@ isBtrfsSubvol fPath = do
   pure $ case e
            of ExitSuccess   -> True
               ExitFailure _ -> False
+
+
+-- | Lists btrfs mount points
+btrfsMounts
+  :: RIO env [FilePath]
+btrfsMounts = do
+  minfo <- T.lines <$> liftIO (TIO.readFile "/proc/self/mountinfo")
+  pure $ T.unpack <$> catMaybes (parseLine <$> minfo)
+
+  where
+    parseLine (T.split (== ' ') -> (_:_:_:_:m:_:_:_:"btrfs":_)) = Just m
+    parseLine _                                                 = Nothing
