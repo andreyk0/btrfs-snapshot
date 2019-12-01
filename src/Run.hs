@@ -74,7 +74,7 @@ runCLISnapshotTransfer (SnapshotTransfer tPathFrom tPathTo) = do
   logDebug . display $ "Mount points: " <> tshow mts
   logDebug . display $ "Input: " <> tshow (tPathFrom, tPathTo, snaps)
 
-  forM_ incrementalTransfers $ \x@(prev, f, t) -> do
+  forM_ incrementalTransfers $ \(prev, f, t) -> do
     let tDir = takeDirectory t
 
     unlessM (doesDirectoryExist tDir) $ do
