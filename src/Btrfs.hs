@@ -12,6 +12,7 @@ module Btrfs
   ) where
 
 
+import qualified Data.List               as List
 import qualified Data.Text.IO            as TIO
 import qualified Data.Text.Lazy          as LT
 import qualified Data.Text.Lazy.Encoding as LTE
@@ -57,15 +58,20 @@ findBtrfsSubvolSnapshots fp' = do
   fp <- canonicalizePath fp'
   fpVol <- findBtrfsSubvol fp >>= canonicalizePath
   outBytes <- proc "btrfs" ["subvolume", "list", fpVol] readProcessStdout_
+
+  mounts <- btrfsMounts
+  fpMount <- LT.pack . addTrailingPathSeparator <$> findMountPoint mounts fpVol
+
+  logDebug . display $ tshow (("fp"::Text, fp), ("fpVol"::Text, fpVol), ("fpMount"::Text, fpMount))
+
   let outTxt = LTE.decodeUtf8 outBytes
       snapPaths = catMaybes $ parseLine <$> LT.lines outTxt
 
-  pure $ LT.unpack <$> filter (LT.isPrefixOf (LT.pack fp)) snapPaths
+      parseLine l =
+        let fields = LT.split (== ' ') l
+        in (fpMount <>) <$> listToMaybe (drop 8 fields)
 
-  where
-    parseLine l =
-      let fields = LT.split (== ' ') l
-       in ("/" <>) <$> listToMaybe (drop 8 fields)
+  pure $ LT.unpack <$> filter (LT.isPrefixOf (LT.pack fp)) snapPaths
 
 
 btrfsSubvolSnapshot
@@ -116,12 +122,25 @@ isBtrfsSubvol fPath = do
               ExitFailure _ -> False
 
 
--- | Lists btrfs mount points
+-- | Finds given path's mount point
+findMountPoint
+  :: [FilePath] -- ^ list of mount points
+  -> FilePath -- ^ *canonical* path in question
+  -> RIO env FilePath
+findMountPoint mpaths fp = maybe
+  (throwM (BtrfsException (tshow ("Failed to find mount point"::Text, mpaths, fp))))
+  pure
+  (List.find (`List.isPrefixOf` fp) mpaths)
+
+
+-- | Lists btrfs mount points. Sorted, longest first.
 btrfsMounts
   :: RIO env [FilePath]
 btrfsMounts = do
   minfo <- T.lines <$> liftIO (TIO.readFile "/proc/self/mountinfo")
-  pure $ T.unpack <$> catMaybes (parseLine <$> minfo)
+  let mps = catMaybes (parseLine <$> minfo)
+      mpsSorted = List.sortBy (flip compare) mps
+  pure $ T.unpack <$> mpsSorted
 
   where
     parseLine (T.split (== ' ') -> (_:_:_:_:m:_:_:_:"btrfs":_)) = Just m

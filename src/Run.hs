@@ -33,6 +33,7 @@ runCLISnapshotCreate (SnapshotCreate paths) =
   where
     snapPath fp = do
       sVol <- findBtrfsSubvol fp
+      logDebug . display $ tshow ("found btrfs subvol"::Text, sVol)
       btrfsSubvolSnapshot sVol
 
 
