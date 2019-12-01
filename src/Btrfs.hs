@@ -5,7 +5,8 @@
 
 
 module Btrfs
-  ( btrfsMounts
+  ( BtrfsException(..)
+  , btrfsMounts
   , btrfsSubvolSnapshot
   , findBtrfsSubvol
   , findBtrfsSubvolSnapshots
