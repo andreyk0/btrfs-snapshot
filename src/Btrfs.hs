@@ -8,6 +8,7 @@ module Btrfs
   ( BtrfsException(..)
   , btrfsMounts
   , btrfsSubvolSnapshot
+  , btrfsSubvolTransfer
   , findBtrfsSubvol
   , findBtrfsSubvolSnapshots
   ) where
@@ -29,6 +30,22 @@ import           Types
 
 newtype BtrfsException = BtrfsException Text deriving (Eq,Show,Generic)
 instance Exception BtrfsException
+
+-- | Subvolume transfer (full/incremental)
+btrfsSubvolTransfer
+  :: HasCLI env
+  => Maybe FilePath -- ^ incremental if defined
+  -> FilePath -- ^ from path
+  -> FilePath -- ^ to path (parent directory)
+  -> RIO env ()
+btrfsSubvolTransfer fParent fFrom fTo = do
+  let parentParams = maybe [] (\p -> ["-p", p]) fParent
+      btrfsSend = proc "btrfs" $ ["send"] <> parentParams <> [fFrom]
+      btrfsRecv = proc "btrfs" ["receive", fTo]
+
+  sendProc <- btrfsSend (startProcess . setStdout createPipe)
+  btrfsRecv (runProcess_ . setStdin (useHandleClose (getStdout sendProc)))
+  checkExitCode sendProc
 
 
 {- | Walk the path up until we hit subvolume boundary.

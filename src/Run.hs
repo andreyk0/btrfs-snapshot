@@ -7,6 +7,7 @@ module Run (run) where
 import           Btrfs
 import qualified Data.List         as List
 import           Import
+import           RIO.Directory
 import           RIO.FilePath
 import           System.Posix.User
 import           Types
@@ -69,17 +70,17 @@ runCLISnapshotTransfer (SnapshotTransfer tPathFrom tPathTo) = do
                  else (Nothing, f, t)
         )
 
-  --  List.sort
-  -- Map parent [paths]
-
-  -- fold (starting with first)
-  --   if exists skip
-  --   else if no previous - send over
-  --   else when has previous - send incremental
-
   mts <- btrfsMounts
-  logInfo . display $ tshow mts
-  logInfo . display $ tshow (tPathFrom, tPathTo, snaps)
+  logDebug . display $ "Mount points: " <> tshow mts
+  logDebug . display $ "Input: " <> tshow (tPathFrom, tPathTo, snaps)
 
-  forM_ incrementalTransfers $ \x@(prev, f, t) ->
-    logInfo . display $ tshow x
+  forM_ incrementalTransfers $ \x@(prev, f, t) -> do
+    let tDir = takeDirectory t
+
+    unlessM (doesDirectoryExist tDir) $ do
+      logInfo . display $ "Creating " <> tshow tDir
+      createDirectoryIfMissing True tDir
+
+    unlessM (doesDirectoryExist t) $ do
+      logInfo . display $ "Transferring " <> tshow (f,tDir)
+      btrfsSubvolTransfer prev f tDir
