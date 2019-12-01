@@ -75,7 +75,7 @@ findBtrfsSubvolSnapshots
 findBtrfsSubvolSnapshots fp' = do
   fp <- canonicalizePath fp'
   fpVol <- findBtrfsSubvol fp >>= canonicalizePath
-  outBytes <- proc "btrfs" ["subvolume", "list", fpVol] readProcessStdout_
+  outBytes <- proc "btrfs" ["subvolume", "list", "-o", fpVol] readProcessStdout_
 
   mounts <- btrfsMounts
   fpMount <- LT.pack . addTrailingPathSeparator <$> findMountPoint mounts fpVol
