@@ -48,6 +48,8 @@ runCLISnapshotTransfer
 runCLISnapshotTransfer (SnapshotTransfer tPathFrom tPathTo) = do
   snaps <- findBtrfsSubvolSnapshots tPathFrom
 
+  logDebug . display $ "Found snapshots: " <> tshow snaps
+
   snapSources <- sequence
         [ case List.stripPrefix (addTrailingPathSeparator tPathFrom) s
             of Nothing -> throwM . BtrfsException $ "failed to strip prefix " <> tshow (s, tPathFrom)

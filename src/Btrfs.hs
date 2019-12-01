@@ -89,7 +89,7 @@ findBtrfsSubvolSnapshots fp' = do
         let fields = LT.split (== ' ') l
         in (fpMount <>) <$> listToMaybe (drop 8 fields)
 
-  pure $ LT.unpack <$> filter (LT.isPrefixOf (LT.pack fp)) snapPaths
+  pure $ LT.unpack <$> filter (LT.isPrefixOf (LT.pack (addTrailingPathSeparator fp))) snapPaths
 
 
 btrfsSubvolSnapshot
