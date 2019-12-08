@@ -5,7 +5,7 @@
 
 
 module Btrfs
-  ( BtrfsException(..)
+  ( module Btrfs.Types
   , btrfsMounts
   , btrfsSubvolSnapshot
   , btrfsSubvolTransfer
@@ -14,6 +14,7 @@ module Btrfs
   ) where
 
 
+import           Btrfs.Types
 import qualified Data.List               as List
 import qualified Data.Text.IO            as TIO
 import qualified Data.Text.Lazy          as LT
@@ -27,9 +28,6 @@ import qualified RIO.Text                as T
 import           System.Process.Typed    (nullStream)
 import           Types
 
-
-newtype BtrfsException = BtrfsException Text deriving (Eq,Show,Generic)
-instance Exception BtrfsException
 
 -- | Subvolume transfer (full/incremental)
 btrfsSubvolTransfer
