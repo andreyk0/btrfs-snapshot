@@ -96,11 +96,12 @@ btrfsSubvolSnapshot
   :: HasCLI env
   => FilePath
   -> RIO env ()
-btrfsSubvolSnapshot fPathFrom = do
-  sRoot <- btrfsSnapshotRoot
+btrfsSubvolSnapshot fPathFrom' = do
+  fPathFrom <- canonicalizePath fPathFrom'
+  sRoot <- btrfsSnapshotRoot fPathFrom
   ts <- liftIO $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%S")) <$> getCurrentTime
   let fPathToRoot = sRoot <> fPathFrom
-      fPathTo = fPathToRoot <> "/" <> ts
+      fPathTo = addTrailingPathSeparator fPathToRoot <> ts
 
   createDirectoryIfMissing True fPathToRoot
   proc "btrfs" ["subvolume", "snapshot", "-r", fPathFrom, fPathTo] runProcess_
@@ -108,20 +109,29 @@ btrfsSubvolSnapshot fPathFrom = do
 
 btrfsSnapshotRoot
   :: HasCLI env
-  => RIO env FilePath
-btrfsSnapshotRoot = do
-  ex <- doesDirectoryExist btrfsSnapshotRootName
-  isSnapRoot <- isBtrfsSubvol btrfsSnapshotRootName
+  => FilePath -- ^ *canonical* file path being snapshotted (to determine btrfs files ystem root from)
+  -> RIO env FilePath
+btrfsSnapshotRoot fp = do
+  mnts <- btrfsMounts
+  fpMount <- findMountPoint mnts fp
+  let snapRoot = btrfsSnapshotRootName fpMount
+  logDebug . display $ tshow (("fp"::Text, fp), ("fpMount"::Text, fpMount), ("snapRoot"::Text, snapRoot))
+
+  ex <- doesDirectoryExist snapRoot
+  isSnapRoot <- isBtrfsSubvol snapRoot
   case (ex, isSnapRoot)
-    of (True, True)  -> pure btrfsSnapshotRootName
+    of (True, True)  -> pure snapRoot
        (True, False) -> throwM $ BtrfsException $ "Refusing to run, " <>
-                                 T.pack btrfsSnapshotRootName <> " exists but it's not a btrfs subvolume"
+                                 T.pack snapRoot <> " exists but it's not a btrfs subvolume"
        (False, True) -> throwM $ BtrfsException "btrfsSnapshotRoot: unexpected error"
-       (False, False) -> proc "btrfs" ["subvolume", "create", btrfsSnapshotRootName] runProcess_ >> pure btrfsSnapshotRootName
+       (False, False) -> proc "btrfs" ["subvolume", "create", snapRoot] runProcess_ >> pure snapRoot
 
 
-btrfsSnapshotRootName :: FilePath
-btrfsSnapshotRootName = "/.snapshot"
+-- | Name of the snapshots dir at the root of the btrfs volume
+btrfsSnapshotRootName
+  :: FilePath -- ^ btrfs mount point
+  -> FilePath
+btrfsSnapshotRootName mp = addTrailingPathSeparator mp <> ".snapshot"
 
 
 -- | Checks if a given path is a btrfs subvolume
