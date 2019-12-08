@@ -1,24 +1,21 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StrictData        #-}
 
 
 module Btrfs.Types where
 
 
-import qualified Data.List               as List
-import qualified Data.Text.IO            as TIO
-import qualified Data.Text.Lazy          as LT
-import qualified Data.Text.Lazy.Encoding as LTE
-import           Data.Time
 import           Import
-import           RIO.Directory
-import           RIO.FilePath
-import           RIO.Process
-import qualified RIO.Text                as T
-import           System.Process.Typed    (nullStream)
-import           Types
 
 
 newtype BtrfsException = BtrfsException Text deriving (Eq,Show,Generic)
 instance Exception BtrfsException
+
+
+data BtrfsFilePath = BtrfsFilePath
+  { bfpFilePath          :: FilePath -- ^ original file path
+  , bfpCanonicalFilePath :: FilePath -- ^ canonical file path
+  , bfpSubvol            :: FilePath -- ^ nearest parent btrfs subvolume
+  , bfpMountPoint        :: FilePath -- ^ mount point of the btrfs filesysem containing this path
+  } deriving (Eq, Ord, Show)

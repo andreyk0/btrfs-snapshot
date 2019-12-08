@@ -36,29 +36,31 @@ runCLISnapshotCreate (SnapshotCreate paths) =
   traverse_ snapPath paths
   where
     snapPath fp = do
-      sVol <- findBtrfsSubvol fp
-      logDebug . display $ tshow ("found btrfs subvol"::Text, sVol)
-      btrfsSubvolSnapshot sVol
+      bfp <- btrfsFilePath fp
+      logDebug . display $ tshow bfp
+      btrfsSubvolSnapshot bfp
 
 
 runCLISnapshotTransfer
   :: HasCLI env
   => CLISnapshotTransfer
   -> RIO env ()
-runCLISnapshotTransfer (SnapshotTransfer tPathFrom tPathTo) = do
+runCLISnapshotTransfer (SnapshotTransfer tPathFrom' tPathTo') = do
+  tPathFrom <- btrfsFilePath tPathFrom'
+  tPathTo <- btrfsFilePath tPathTo'
   snaps <- findBtrfsSubvolSnapshots tPathFrom
 
   logDebug . display $ "Found snapshots: " <> tshow snaps
 
   snapSources <- sequence
-        [ case List.stripPrefix (addTrailingPathSeparator tPathFrom) s
+        [ case List.stripPrefix (addTrailingPathSeparator (bfpCanonicalFilePath tPathFrom)) s
             of Nothing -> throwM . BtrfsException $ "failed to strip prefix " <> tshow (s, tPathFrom)
                Just p  -> pure (s, p)
         | s <- snaps
         ]
 
   let transferFromTo = List.sort
-        [ (s, addTrailingPathSeparator tPathTo <> p)
+        [ (s, addTrailingPathSeparator (bfpCanonicalFilePath tPathTo) <> p)
         | (s, p) <- snapSources
         ]
 
@@ -72,8 +74,6 @@ runCLISnapshotTransfer (SnapshotTransfer tPathFrom tPathTo) = do
                  else (Nothing, f, t)
         )
 
-  mts <- btrfsMounts
-  logDebug . display $ "Mount points: " <> tshow mts
   logDebug . display $ "Input: " <> tshow (tPathFrom, tPathTo, snaps)
 
   forM_ incrementalTransfers $ \(prev, f, t) -> do
