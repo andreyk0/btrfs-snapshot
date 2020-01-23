@@ -1,7 +1,7 @@
 # btrfs-snapshot
 
 ```
-Header for command line arguments
+Manage btrfs volume snapshots
 
 Usage: btrfs-snapshot [--version] [--help] [-v|--verbose] COMMAND
   Program description, also for command line arguments

@@ -14,7 +14,7 @@ main :: IO ()
 main = do
   (opts, cmd) <- simpleOptions
     $(simpleVersion Paths_btrfs_snapshot.version)
-    "Header for command line arguments"
+    "Manage btrfs volume snapshots"
     "Program description, also for command line arguments"
     (Options
        <$> switch ( long "verbose"
